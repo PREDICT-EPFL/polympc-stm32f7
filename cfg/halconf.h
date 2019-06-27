@@ -520,6 +520,9 @@
 #define WSPI_USE_MUTUAL_EXCLUSION           TRUE
 #endif
 
+
+#define CHPRINTF_USE_FLOAT TRUE
+
 #endif /* HALCONF_H */
 
 /** @} */

@@ -6,6 +6,7 @@
 # Compiler options here.
 ifeq ($(USE_OPT),)
 	USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
+# 	USE_OPT += -nostdlib # enable to find all __throw_* functions
 endif
 
 # C specific options here (added to USE_OPT).
@@ -16,6 +17,10 @@ endif
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
 	USE_CPPOPT = -fno-rtti
+	USE_CPPOPT += -std=gnu++11
+	USE_CPPOPT += -fno-use-cxa-atexit
+	USE_CPPOPT += -fno-exceptions -fno-unwind-tables -fno-threadsafe-statics
+# 	USE_CPPOPT += -faligned-new
 endif
 
 # Enable this if you want the linker to remove unused code and data.
@@ -55,7 +60,8 @@ endif
 # Stack size to be allocated to the Cortex-M process stack. This stack is
 # the stack used by the main() thread.
 ifeq ($(USE_PROCESS_STACKSIZE),)
-	USE_PROCESS_STACKSIZE = 0x400
+	# USE_PROCESS_STACKSIZE = 0x400
+	USE_PROCESS_STACKSIZE = 0x10000
 endif
 
 # Stack size to the allocated to the Cortex-M main/exceptions stack. This
@@ -72,6 +78,7 @@ endif
 # FPU-related options.
 ifeq ($(USE_FPU_OPT),)
 	USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv5-d16
+	# USE_FPU_OPT = -mfloat-abi=$(USE_FPU) -mfpu=fpv5-sp-d16
 endif
 
 #
@@ -86,10 +93,11 @@ endif
 PROJECT = ch
 
 # Target settings.
-MCU  = cortex-m4
+#MCU  = cortex-m4
+MCU  = cortex-m7
 
 # Imported source files and paths.
-CHIBIOS  := ../lib/ChibiOS
+CHIBIOS  := lib/ChibiOS
 CONFDIR  := ./cfg
 BUILDDIR := ./build
 DEPDIR   := ./.dep
@@ -112,19 +120,26 @@ include $(CHIBIOS)/tools/mk/autobuild.mk
 #include $(CHIBIOS)/test/lib/test.mk
 #include $(CHIBIOS)/test/rt/rt_test.mk
 #include $(CHIBIOS)/test/oslib/oslib_test.mk
+include $(CHIBIOS)/os/hal/lib/streams/streams.mk
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F76xxI.ld
+# LDSCRIPT= $(STARTUPLD)/STM32F76xxI.ld
+LDSCRIPT= ./STM32F76xxI.ld
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
 CSRC = $(ALLCSRC) \
-			 $(TESTSRC) \
-			 main.c
+		$(TESTSRC) \
+		$(CHIBIOS)/os/various/syscalls.c \
+		src/malloc_lock.c \
+		src/main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC = $(ALLCPPSRC)
+CPPSRC = $(ALLCPPSRC) \
+		 $(CHIBIOS)/os/various/cpp_wrappers/syscalls_cpp.cpp \
+		 src/stubs.cpp \
+		 src/nmpc_test.cpp
 
 # List ASM source files here.
 ASMSRC = $(ALLASMSRC)
@@ -134,12 +149,16 @@ ASMXSRC = $(ALLXASMSRC)
 
 # Inclusion directories.
 INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC)
+INCDIR += lib/eigen
+INCDIR += ../../polympc/src
+INCDIR += ./src
 
 # Define C warning options here.
 CWARN = -Wall -Wextra -Wundef -Wstrict-prototypes
 
 # Define C++ warning options here.
 CPPWARN = -Wall -Wextra -Wundef
+CPPWARN += -Wno-unused-parameter
 
 #
 # Project, target, sources and paths
@@ -150,7 +169,8 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+# UDEFS = -DEIGEN_NO_MALLOC
+# UDEFS += -DEIGEN_NO_DEBUG
 
 # Define ASM defines here
 UADEFS =
@@ -174,6 +194,7 @@ ULIBS =
 
 RULESPATH = $(CHIBIOS)/os/common/startup/ARMCMx/compilers/GCC/mk
 include $(RULESPATH)/arm-none-eabi.mk
+LD = $(TRGT)g++ # overwrite linker to g++
 include $(RULESPATH)/rules.mk
 
 #
@@ -183,6 +204,24 @@ include $(RULESPATH)/rules.mk
 ##############################################################################
 # Custom rules
 #
+
+POST_MAKE_ALL_RULE_HOOK: mem_info
+
+# overwrite default asm listing rule
+%.list: %.elf
+ifeq ($(USE_VERBOSE_COMPILE),yes)
+	$(OD) -d $< > $@
+else
+	@echo Creating $@
+	@$(OD) -d $< > $@
+	@echo
+	@echo Done
+endif
+
+.PHONY: mem_info
+mem_info: $(BUILDDIR)/$(PROJECT).elf
+	arm-none-eabi-nm -C --size-sort --print-size $(BUILDDIR)/$(PROJECT).elf > $(BUILDDIR)/$(PROJECT).size
+	arm-none-eabi-nm -C --numeric-sort --print-size $(BUILDDIR)/$(PROJECT).elf > $(BUILDDIR)/$(PROJECT).addr
 
 .PHONY: flash
 flash: $(BUILDDIR)/$(PROJECT).elf

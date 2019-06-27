@@ -1,0 +1,6 @@
+[submodule "lib/ChibiOS"]
+	path = lib/ChibiOS
+	url = https://github.com/ChibiOS/ChibiOS.git
+[submodule "lib/eigen"]
+	path = lib/eigen
+	url = https://github.com/eigenteam/eigen-git-mirror
