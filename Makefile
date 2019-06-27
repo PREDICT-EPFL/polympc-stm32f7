@@ -150,7 +150,7 @@ ASMXSRC = $(ALLXASMSRC)
 # Inclusion directories.
 INCDIR = $(CONFDIR) $(ALLINC) $(TESTINC)
 INCDIR += lib/eigen
-INCDIR += ../../polympc/src
+INCDIR += lib/polympc/src
 INCDIR += ./src
 
 # Define C warning options here.
