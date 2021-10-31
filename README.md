@@ -1,6 +1,6 @@
-# PolyMPC Mobile Robot example for STM32F7
+# PolyMPC example for STM32F7
 
-This repository contains a test example of the mobile robot parking problem for the Nucleo-F767ZI devboard.
+This repository contains a test example for the Nucleo-F767ZI devboard.
 
 ## Build
 
